@@ -143,7 +143,7 @@ public class ApplicationController   {
         }
         else {
             String token = params.get("TOKEN").get(0);
-            return "redirect:"+ECURIConstants.TAXAMO+"checkout/index.html?"+
+            return "redirect:"+ECURIConstants.TAXAMO+"/checkout/index.html?"+
                     "token="+token+
                     "&public_token="+"SamplePublicTestKey1"+
                     "&billing_country_code="+"IE"+
