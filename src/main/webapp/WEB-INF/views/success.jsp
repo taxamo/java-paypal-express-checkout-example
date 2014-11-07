@@ -1,12 +1,13 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="UTF-8">
 <title>Successfull Checkout</title>
+<link href="css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-<h1>Successfull purchase</h1>
+<h1>Successful purchase</h1>
 
 <table class="shopping-cart">
 		<thead>
@@ -29,9 +30,12 @@
 	<br/>
 	<br/>
 	<hr/>
-	Administration:
 	<a href="/confirm?transactionKey=${transactionKey}">
 	    Confirm transaction
 	</a>
+	<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="js/bootstrap.min.js"></script>
 </body>
 </html>

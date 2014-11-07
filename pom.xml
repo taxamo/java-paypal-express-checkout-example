@@ -10,7 +10,7 @@
        <dependency>
            <groupId>com.taxamo</groupId>
            <artifactId>taxamo-java</artifactId>
-           <version>1.0.2</version>
+           <version>1.0.3</version>
        </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
@@ -48,7 +48,7 @@
             <plugin>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-maven-plugin</artifactId>
-                <version>9.2.3.v20140905</version>
+                <version>9.0.5.v20130815</version>
             </plugin>
         </plugins>
     </build>
