@@ -30,7 +30,7 @@
 	<br/>
 	<br/>
 	<hr/>
-	<a href="/confirm?transactionKey=${transactionKey}">
+	<a href="/confirm?transactionKey=${transactionKey}&payerId=${payerId}&amount=${total}&token=${token}">
 	    Confirm transaction
 	</a>
 	<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->

@@ -3,6 +3,7 @@ package com.taxamo.example.ec;
 import com.taxamo.client.api.TaxamoApi;
 import com.taxamo.client.common.ApiException;
 import com.taxamo.client.model.ConfirmTransactionIn;
+import com.taxamo.client.model.ConfirmTransactionOut;
 import com.taxamo.client.model.GetTransactionOut;
 import org.springframework.http.*;
 import org.springframework.http.converter.FormHttpMessageConverter;
@@ -49,17 +50,53 @@ public class ApplicationController {
     }
 
     @RequestMapping(value = "/confirm")
-    public String confirm(@RequestParam("transactionKey") String transactionKey, Model model) {
-        try {
-            taxamoApi.confirmTransaction(transactionKey, new ConfirmTransactionIn());
-        }
-        catch (ApiException ae) {
-            model.addAttribute("error", "ERROR result: " + ae.getMessage());
+    public String confirm(String transactionKey, String payerId, String amount, String token, Model model) {
+
+        RestTemplate template = new RestTemplate();
+
+        MultiValueMap<String, String> map = new LinkedMultiValueMap<String, String>();
+        map.add("USER", ppUser);
+        map.add("PWD", ppPass);
+        map.add("SIGNATURE", ppSign);
+        map.add("VERSION", "117");
+        map.add("METHOD", "DoExpressCheckoutPayment");
+        map.add("PAYERID", payerId);
+        map.add("TOKEN", token);
+        map.add("PAYMENTREQUEST_0_CURRENCYCODE", "EUR");
+        map.add("PAYMENTREQUEST_0_AMT", amount);
+        map.add("PAYMENTREQUEST_0_PAYMENTACTION", "Sale");
+
+        List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>();
+        messageConverters.add(new FormHttpMessageConverter());
+        messageConverters.add(new StringHttpMessageConverter());
+        template.setMessageConverters(messageConverters);
+
+        HttpHeaders requestHeaders = new HttpHeaders();
+        requestHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, requestHeaders);
+        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST , request, String.class);
+
+        Map<String, List<String>> params = parseQueryParams(res.getBody());
+
+        String ack = params.get("ACK").get(0);
+        if (!ack.equals("Success")) {
+            model.addAttribute("error", params.get("L_LONGMESSAGE0").get(0));
             return "error";
         }
-        model.addAttribute("transactionKey", transactionKey);
+        else {
+            try {
+                ConfirmTransactionOut transactionOut = taxamoApi.confirmTransaction(transactionKey, new ConfirmTransactionIn());
+                model.addAttribute("status", transactionOut.getTransaction().getStatus());
+            }
+            catch (ApiException ae) {
+                model.addAttribute("error", "ERROR result: " + ae.getMessage());
+                return "error";
+            }
+            model.addAttribute("transactionKey", transactionKey);
 
-        return "confirm";
+            return "confirm";
+        }
     }
 
     @RequestMapping(value = "/success-checkout")
@@ -74,6 +111,8 @@ public class ApplicationController {
         }
 
         model.addAttribute("transactionKey", transactionKey);
+        model.addAttribute("payerId", payer);
+        model.addAttribute("token", token);
 
         return "success";
     }

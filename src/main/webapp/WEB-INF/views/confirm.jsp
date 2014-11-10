@@ -7,7 +7,7 @@
 <link href="css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
-    <h1>Payment confirmation</h1>
+    <h1>Payment confirmed</h1>
 
     Transaction with id: ${transactionKey}, status: ${status}.
 	<br/>
