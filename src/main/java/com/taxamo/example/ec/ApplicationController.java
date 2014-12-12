@@ -44,11 +44,92 @@ public class ApplicationController {
         return "index";
     }
 
+    /**
+     * This method initializes Express Checkout token with PayPal and then redirects to Taxamo checkout form.
+     *
+     * Please note that only Express Checkout token is provided to Taxamo - and Taxamo will use
+     * provided PayPal credentials to get order details from it and render the checkout form.
+     *
+     *
+     * @param model
+     * @return
+     */
+    @RequestMapping("/express-checkout")
+    public String expressCheckout(Model model) {
+
+        RestTemplate template = new RestTemplate();
+
+        MultiValueMap<String, String> map = new LinkedMultiValueMap<String, String>();
+        map.add("USER", ppUser);
+        map.add("PWD", ppPass);
+        map.add("SIGNATURE", ppSign);
+        map.add("VERSION", "117");
+        map.add("METHOD", "SetExpressCheckout");
+        map.add("returnUrl", properties.getProperty(PropertiesConstants.STORE) + properties.getProperty(PropertiesConstants.CONFIRM_LINK));
+        map.add("cancelUrl", properties.getProperty(PropertiesConstants.STORE) + properties.getProperty(PropertiesConstants.CANCEL_LINK));
+
+        //shopping item(s)
+        map.add("PAYMENTREQUEST_0_AMT", "20.00"); // total amount
+        map.add("PAYMENTREQUEST_0_PAYMENTACTION", "Sale");
+        map.add("PAYMENTREQUEST_0_CURRENCYCODE", "EUR");
+
+        map.add("L_PAYMENTREQUEST_0_NAME0", "ProdName");
+        map.add("L_PAYMENTREQUEST_0_DESC0", "ProdName desc");
+        map.add("L_PAYMENTREQUEST_0_AMT0", "20.00");
+        map.add("L_PAYMENTREQUEST_0_QTY0", "1");
+        map.add("L_PAYMENTREQUEST_0_ITEMCATEGORY0", "Digital");
+
+        List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>();
+        messageConverters.add(new FormHttpMessageConverter());
+        messageConverters.add(new StringHttpMessageConverter());
+        template.setMessageConverters(messageConverters);
+
+        HttpHeaders requestHeaders = new HttpHeaders();
+        requestHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, requestHeaders);
+        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST, request, String.class);
+
+        Map<String, List<String>> params = parseQueryParams(res.getBody());
+
+        String ack = params.get("ACK").get(0);
+        if (!ack.equals("Success")) {
+            model.addAttribute("error", params.get("L_LONGMESSAGE0").get(0));
+            return "error";
+        } else {
+            String token = params.get("TOKEN").get(0);
+            return "redirect:" + properties.get(PropertiesConstants.TAXAMO) + "/checkout/index.html?" +
+                    "token=" + token +
+                    "&public_token=" + publicToken +
+                    "&cancel_url=" + new String(Base64.encodeBase64((properties.getProperty(PropertiesConstants.STORE)
+                    + properties.getProperty(PropertiesConstants.CANCEL_LINK)).getBytes())) +
+                    "&return_url=" + new String(Base64.encodeBase64((properties.getProperty(PropertiesConstants.STORE)
+                    + properties.getProperty(PropertiesConstants.CONFIRM_LINK)).getBytes())) +
+                    "#/paypal_express_checkout";
+        }
+    }
+
     @RequestMapping(value = "/cancel")
     public String cancel() {
         return "cancel";
     }
 
+    /**
+     * This method is invoked after Taxamo has successfully verified tax location evidence and
+     * created a transaction.
+     *
+     * Two things happen then:
+     * - first, the express checkout token is used to capture payment in PayPal
+     * - next, transaction is confirmed with Taxamo
+     *
+     * After that, confirmation page is displayed to the customer.
+     *
+     * @param payerId
+     * @param token
+     * @param transactionKey
+     * @param model
+     * @return
+     */
     @RequestMapping(value = "/confirm")
     public String confirm(@RequestParam("PayerID") String payerId, @RequestParam("token") String token, @RequestParam("taxamo_transaction_key") String transactionKey, Model model) {
 
@@ -63,7 +144,7 @@ public class ApplicationController {
         map.add("PAYERID", payerId);
         map.add("TOKEN", token);
 
-        GetTransactionOut transaction;
+        GetTransactionOut transaction; //more transaction details should be verified in real-life implementation
         try {
             transaction = taxamoApi.getTransaction(transactionKey);
         } catch (ApiException e) {
@@ -126,60 +207,7 @@ public class ApplicationController {
         return "success";
     }
 
-    @RequestMapping("/express-checkout")
-    public String expressCheckout(Model model) {
 
-        RestTemplate template = new RestTemplate();
-
-        MultiValueMap<String, String> map = new LinkedMultiValueMap<String, String>();
-        map.add("USER", ppUser);
-        map.add("PWD", ppPass);
-        map.add("SIGNATURE", ppSign);
-        map.add("VERSION", "117");
-        map.add("METHOD", "SetExpressCheckout");
-        map.add("returnUrl", properties.getProperty(PropertiesConstants.STORE) + properties.getProperty(PropertiesConstants.CONFIRM_LINK));
-        map.add("cancelUrl", properties.getProperty(PropertiesConstants.STORE) + properties.getProperty(PropertiesConstants.CANCEL_LINK));
-
-        //shopping item(s)
-        map.add("PAYMENTREQUEST_0_AMT", "20.00"); // total amount
-        map.add("PAYMENTREQUEST_0_PAYMENTACTION", "Sale");
-        map.add("PAYMENTREQUEST_0_CURRENCYCODE", "EUR");
-
-        map.add("L_PAYMENTREQUEST_0_NAME0", "ProdName");
-        map.add("L_PAYMENTREQUEST_0_DESC0", "ProdName desc");
-        map.add("L_PAYMENTREQUEST_0_AMT0", "20.00");
-        map.add("L_PAYMENTREQUEST_0_QTY0", "1");
-        map.add("L_PAYMENTREQUEST_0_ITEMCATEGORY0", "Digital");
-
-        List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>();
-        messageConverters.add(new FormHttpMessageConverter());
-        messageConverters.add(new StringHttpMessageConverter());
-        template.setMessageConverters(messageConverters);
-
-        HttpHeaders requestHeaders = new HttpHeaders();
-        requestHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, requestHeaders);
-        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST, request, String.class);
-
-        Map<String, List<String>> params = parseQueryParams(res.getBody());
-
-        String ack = params.get("ACK").get(0);
-        if (!ack.equals("Success")) {
-            model.addAttribute("error", params.get("L_LONGMESSAGE0").get(0));
-            return "error";
-        } else {
-            String token = params.get("TOKEN").get(0);
-            return "redirect:" + properties.get(PropertiesConstants.TAXAMO) + "/checkout/index.html?" +
-                    "token=" + token +
-                    "&public_token=" + publicToken +
-                    "&cancel_url=" + new String(Base64.encodeBase64((properties.getProperty(PropertiesConstants.STORE)
-                    + properties.getProperty(PropertiesConstants.CANCEL_LINK)).getBytes())) +
-                    "&return_url=" + new String(Base64.encodeBase64((properties.getProperty(PropertiesConstants.STORE)
-                    + properties.getProperty(PropertiesConstants.CONFIRM_LINK)).getBytes())) +
-                    "#/paypal_express_checkout";
-        }
-    }
 
     @PostConstruct
     public void init() {
