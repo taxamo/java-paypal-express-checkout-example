@@ -1,30 +1,33 @@
 ## Taxamo Java PayPal ExpressCheckout example
 
-This guide shows how to integrate PayPal's ExpressCheckout with Taxamo’s RESTful API and serves as an example for integration with Java apps.
+This guide shows how to integrate PayPal's ExpressCheckout with Taxamo RESTful API and also serves as an example for using Taxamo Java API client library.
 
-*Complete source codes for this example are located in `TODO` GitHub repository.*
+*Complete source codes for this example are located in [https://github.com/taxamo/java-paypal-express-checkout-example](https://github.com/taxamo/java-paypal-express-checkout-example) GitHub repository.*
 
-First step to use PayPal's ExpressCheckout is to open developer account at http://developer.paypal.com. Next, you need to get your's Classic TEST API credentials (signature) (get it from [sandbox/accounts](https://developer.paypal.com/webapps/developer/applications/accounts) details page, see picture below, or check paypal's [documentation](https://developer.paypal.com/docs/classic/api/apiCredentials/)).
+First step to use PayPal ExpressCheckout is to open developer account at http://developer.paypal.com. Next, you need to get your Classic 
+TEST API credentials (signature) (get it from [sandbox/accounts](https://developer.paypal.com/webapps/developer/applications/accounts) details page, 
+see picture below, or check PayPal [documentation](https://developer.paypal.com/docs/classic/api/apiCredentials/)).
 
-![paypal api credentials](https://dl.dropboxusercontent.com/u/39202878/pp_credentials.png)
+![PayPal API credentials](https://dl.dropboxusercontent.com/u/39202878/pp_credentials.png)
 
-As already mentioned, you need to provide those to  [PayPal’s PSP configuration screen](https://beta.taxamo.com/merchant/app.html!/account/payment-gateways/paypal) in Taxamo dashboard.
+As already mentioned, you need to provide those to 
+[PayPal PSP configuration screen](https://beta.taxamo.com/merchant/app.html!/account/payment-gateways/paypal) in Taxamo dashboard.
 
-There are two options to integrate ExpressChekcout in your app:
+There are two options to integrate ExpressCheckout in your app:
 
  - shopping cart experience
- - payement option
+ - payment option
 
 In this example, we've used first option, adding PayPal's ExpressCheckout button on simple Shopping cart page.
 
 ```html
-	<a href="/express-checkout">
-	    <img src="https://www.paypal.com/en_US/i/btn/btn_xpressCheckout.gif" align="left" style="margin-right:7px;">
-	</a>
+<a href="/express-checkout">
+    <img src="https://www.paypal.com/en_US/i/btn/btn_xpressCheckout.gif" align="left" style="margin-right:7px;">
+</a>
 ```
 
-By clicking on this button your app should retrieve token from PayPal for current Shopping cart state (by calling PayPal **SetExpressCheckout** API), 
-and then forward it to Taxamo. This is done with following route controller:
+By clicking on this button your app should create Express Checkout token with PayPal for current Shopping cart state (by calling PayPal **SetExpressCheckout** API), 
+and then redirect customer's browser to Taxamo. This is done with following route controller:
 
 ```java
 RestTemplate template = new RestTemplate();
@@ -79,28 +82,28 @@ if (!ack.equals("Success")) {
 }
 ```
 
- After user finishes with payment Taxamo will redirect user to page you specified (or in case of cancellation, to specific page for that case).
+After the customer finishes with PayPal payment, Taxamo will redirect user to page you specified (or in case of cancellation, to specific page for that case).
 
-At that point, your store should finalize payment, by calling PayPal **DoExpressCheckoutPayment** API, and confirm transaction with Taxamo.
+At that point, your store should finalize payment, by calling PayPal **DoExpressCheckoutPayment** API, and confirm transaction with Taxamo using RESTful API.
 
-Calling Taxamo RESTful API is as simple as calling a method on TaxamoApi instance (upon whose initialization private token should be supplied).
+Calling Taxamo RESTful API is as simple as calling a method on `TaxamoApi` instance (upon whose initialization private token should be supplied).
 
 Code for confirmation of transaction is stated below:
 
 ```java
-	try {
-        taxamoApi.confirmTransaction(transactionKey, new ConfirmTransactionIn());
-    }
-    catch (ApiException ae) {
-        ...
-    }
+try {
+    taxamoApi.confirmTransaction(transactionKey, new ConfirmTransactionIn());
+}
+catch (ApiException ae) {
+    ...
+}
 ```
 
 TaxamoApi is part of [taxamo-java](https://github.com/taxamo/taxamo-java) library, which needs to be added as dependency to your project.
 
 In this example we have used SpringMVC for simple request/response handling and Bootstrap 3 for simple UI templating. Both are optional, you can use ones by your choice.
 
-To run the app in test/sandbox mode, run following command (providing correct env_vars - you should use your keys):
+To run the app in test/sandbox mode, run following command (providing correct env_vars - you should use your account's Taxamo tokens and PayPal credentials):
 
 ```
 PRIVATE_TOKEN='SamplePrivateTestKey1' \
@@ -111,8 +114,8 @@ PP_SIGN='AFcWxV21C7fd0v3bYYYRCpSSRl31AmaVKlMrHDz6A-O8RusKMWO9DnWn' \
 mvn -Djetty.port=3009 jetty:run
 ```
 
-Then run http://localhost:3009 in your browser.
+Then open http://localhost:3009 in your browser.
 
 Whole process of ExpressCheckout is depicted with following diagram:
 
-![taxamo paypal EC diagram](https://dl.dropboxusercontent.com/u/39202878/TEC.png)
+![Taxamo PayPal EC diagram](https://dl.dropboxusercontent.com/u/39202878/TEC.png)
