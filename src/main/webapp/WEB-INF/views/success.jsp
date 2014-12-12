@@ -4,12 +4,18 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="UTF-8">
 <title>Successfull Checkout</title>
-<link href="css/bootstrap.min.css" rel="stylesheet">
+<!-- Latest compiled and minified CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+
+<!-- Optional theme -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css">
 </head>
 <body>
+<div class="container">
+<div class="jumbotron">
 <h1>Successful purchase</h1>
 
-<table class="shopping-cart">
+<table class="table table-striped">
 		<thead>
 			<tr>
 				<th scope="col">Item</th>
@@ -27,15 +33,7 @@
 		    </tr>
 		</tbody>
 	</table>
-	<br/>
-	<br/>
-	<hr/>
-	<a href="/confirm?transactionKey=${transactionKey}&payerId=${payerId}&amount=${total}&token=${token}">
-	    Confirm transaction
-	</a>
-	<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-    <!-- Include all compiled plugins (below), or include individual files as needed -->
-    <script src="js/bootstrap.min.js"></script>
+</div>
+</div>
 </body>
 </html>

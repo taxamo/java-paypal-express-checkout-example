@@ -50,7 +50,7 @@ public class ApplicationController {
     }
 
     @RequestMapping(value = "/confirm")
-    public String confirm(String transactionKey, String payerId, String amount, String token, Model model) {
+    public String confirm(@RequestParam("PayerID") String payerId, @RequestParam("token") String token, @RequestParam("taxamo_transaction_key") String transactionKey, Model model) {
 
         RestTemplate template = new RestTemplate();
 
@@ -62,9 +62,20 @@ public class ApplicationController {
         map.add("METHOD", "DoExpressCheckoutPayment");
         map.add("PAYERID", payerId);
         map.add("TOKEN", token);
+
+        GetTransactionOut transaction;
+        try {
+            transaction = taxamoApi.getTransaction(transactionKey);
+        } catch (ApiException e) {
+            e.printStackTrace();
+            model.addAttribute("error", "ERROR result: " + e.getMessage());
+            return "error";
+        }
+
         map.add("PAYMENTREQUEST_0_CURRENCYCODE", "EUR");
-        map.add("PAYMENTREQUEST_0_AMT", amount);
+        map.add("PAYMENTREQUEST_0_AMT", transaction.getTransaction().getTotalAmount().toString());
         map.add("PAYMENTREQUEST_0_PAYMENTACTION", "Sale");
+
 
         List<HttpMessageConverter<?>> messageConverters = new ArrayList<HttpMessageConverter<?>>();
         messageConverters.add(new FormHttpMessageConverter());
@@ -75,7 +86,7 @@ public class ApplicationController {
         requestHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, requestHeaders);
-        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST , request, String.class);
+        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST, request, String.class);
 
         Map<String, List<String>> params = parseQueryParams(res.getBody());
 
@@ -83,36 +94,34 @@ public class ApplicationController {
         if (!ack.equals("Success")) {
             model.addAttribute("error", params.get("L_LONGMESSAGE0").get(0));
             return "error";
-        }
-        else {
+        } else {
             try {
                 ConfirmTransactionOut transactionOut = taxamoApi.confirmTransaction(transactionKey, new ConfirmTransactionIn());
                 model.addAttribute("status", transactionOut.getTransaction().getStatus());
-            }
-            catch (ApiException ae) {
+            } catch (ApiException ae) {
+                ae.printStackTrace();
                 model.addAttribute("error", "ERROR result: " + ae.getMessage());
                 return "error";
             }
-            model.addAttribute("transactionKey", transactionKey);
+            model.addAttribute("taxamo_transaction_key", transactionKey);
 
-            return "confirm";
+            return "redirect:/success-checkout";
         }
     }
 
     @RequestMapping(value = "/success-checkout")
-    public String success(@RequestParam("PayerID") String payer, @RequestParam("token") String token, @RequestParam("taxamo_transaction_key") String transactionKey, Model model) {
+    public String success(@RequestParam("taxamo_transaction_key") String transactionKey, Model model) {
 
         try {
             GetTransactionOut transaction = taxamoApi.getTransaction(transactionKey);
             model.addAttribute("total", transaction.getTransaction().getTotalAmount());
         } catch (ApiException ae) {
+            ae.printStackTrace();
             model.addAttribute("error", "Error, status returned: " + ae.getMessage());
             return "error";
         }
 
         model.addAttribute("transactionKey", transactionKey);
-        model.addAttribute("payerId", payer);
-        model.addAttribute("token", token);
 
         return "success";
     }
@@ -128,8 +137,8 @@ public class ApplicationController {
         map.add("SIGNATURE", ppSign);
         map.add("VERSION", "117");
         map.add("METHOD", "SetExpressCheckout");
-        map.add("returnUrl", properties.get(PropertiesConstants.STORE).toString() + properties.get(PropertiesConstants.SUCCESS_LINK).toString());
-        map.add("cancelUrl", properties.get(PropertiesConstants.STORE).toString() + properties.get(PropertiesConstants.CANCEL_LINK).toString());
+        map.add("returnUrl", properties.getProperty(PropertiesConstants.STORE) + properties.getProperty(PropertiesConstants.CONFIRM_LINK));
+        map.add("cancelUrl", properties.getProperty(PropertiesConstants.STORE) + properties.getProperty(PropertiesConstants.CANCEL_LINK));
 
         //shopping item(s)
         map.add("PAYMENTREQUEST_0_AMT", "20.00"); // total amount
@@ -151,7 +160,7 @@ public class ApplicationController {
         requestHeaders.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<MultiValueMap<String, String>>(map, requestHeaders);
-        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST , request, String.class);
+        ResponseEntity<String> res = template.exchange(URI.create(properties.get(PropertiesConstants.PAYPAL_NVP).toString()), HttpMethod.POST, request, String.class);
 
         Map<String, List<String>> params = parseQueryParams(res.getBody());
 
@@ -159,15 +168,15 @@ public class ApplicationController {
         if (!ack.equals("Success")) {
             model.addAttribute("error", params.get("L_LONGMESSAGE0").get(0));
             return "error";
-        }
-        else {
+        } else {
             String token = params.get("TOKEN").get(0);
-            return "redirect:"+ properties.get(PropertiesConstants.TAXAMO)+"/checkout/index.html?"+
-                    "token="+token+
-                    "&public_token="+publicToken+
-                    "&billing_country_code="+"IE"+
-                    "&cancel_url="+ new String(Base64.encodeBase64(new String(properties.get(PropertiesConstants.STORE).toString() + properties.get(PropertiesConstants.CANCEL_LINK).toString()).getBytes()))+
-                    "&return_url=" + new String(Base64.encodeBase64(new String(properties.get(PropertiesConstants.STORE).toString() + properties.get(PropertiesConstants.SUCCESS_LINK).toString()).getBytes())) +
+            return "redirect:" + properties.get(PropertiesConstants.TAXAMO) + "/checkout/index.html?" +
+                    "token=" + token +
+                    "&public_token=" + publicToken +
+                    "&cancel_url=" + new String(Base64.encodeBase64((properties.getProperty(PropertiesConstants.STORE)
+                    + properties.getProperty(PropertiesConstants.CANCEL_LINK)).getBytes())) +
+                    "&return_url=" + new String(Base64.encodeBase64((properties.getProperty(PropertiesConstants.STORE)
+                    + properties.getProperty(PropertiesConstants.CONFIRM_LINK)).getBytes())) +
                     "#/paypal_express_checkout";
         }
     }
@@ -177,9 +186,8 @@ public class ApplicationController {
         properties = new Properties();
         try {
             properties.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("config.properties"));
-        }
-        catch (IOException e) {
-            System.err.println(e.getStackTrace());
+        } catch (IOException e) {
+            e.printStackTrace();
         }
 
         taxamoApi = new TaxamoApi(privateToken);
