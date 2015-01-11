@@ -118,4 +118,4 @@ Then open http://localhost:3009 in your browser.
 
 Whole process of ExpressCheckout is depicted with following diagram:
 
-![Taxamo PayPal EC diagram](https://dl.dropboxusercontent.com/u/39202878/TEC.png)
+![Taxamo PayPal EC diagram](https://dl.dropboxusercontent.com/u/18971050/taxamo/TEC.png)
